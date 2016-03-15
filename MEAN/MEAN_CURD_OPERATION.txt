@@ -1,0 +1,780 @@
+//============================SERVER.JS==========================
+
+
+
+var express = require("express");
+var http = require('http');
+var path = require('path');
+var favicon = require('serve-favicon');
+var logger = require('morgan');
+var methodOverride = require('method-override');
+var session = require('express-session');
+var bodyParser = require('body-parser');
+var multer = require('multer');
+var errorHandler = require('errorhandler');
+var mongoose = require('mongoose');
+var mongojs = require('mongojs');
+
+//==========================================================
+var app = express();
+var port = process.env.PORT || 3000;
+
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'html');
+app.use(logger('dev'));
+app.use(methodOverride());
+app.use(session({
+    resave: true,
+    saveUninitialized: true,
+    secret: 'uwotm8'
+}));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+//=======================================================================================
+var db = mongojs('mongodb://localhost:27017/database', ['t1'])
+app.get("/", function (req, res) {
+    
+    res.sendfile('./Views/sp.html');
+    
+});
+
+//---------------------------------------------------all recored
+
+app.get('/allrecord', function (req, res) {
+    //console.log(tabl);
+    //res.json(tabl)
+    
+    db.t1.find(function (err, docs) {
+        res.json(docs)
+    })
+
+});
+
+//-----------------------------save UP
+app.put('/', function (req, res, next) {
+    var name = req.body.name;
+    var lastname = req.body.lastname;
+    var email = req.body.email;
+    //=====================
+    db.t1.insert({ 'name': name, 'lastname': lastname, 'email': email }, function (err, saved) {
+        if (err || !saved) {
+            console.log("User not saved");
+            res.end("saved Not successfully");
+        }
+        else {
+            
+            //  res.render('/');
+            res.end("saved successfully");
+            //refresh();
+        }
+    });
+    
+
+});
+///---------------------------Update  
+app.post('/UpdateRecord', function (req, res) {
+    var id = req.body.record._id;
+    var name = req.body.record.name;
+    var lastname = req.body.record.lastname;
+    var email = req.body.record.email;
+    
+    //db.t1.update({ _id : mongojs.ObjectId(id)  }, { $set: { name: name, lastname: lastname, email: email } } , { multi: true }, function (err, saved) {
+    db.t1.findAndModify({ query: { _id : mongojs.ObjectId(id) }, update: { $set : { name: name, lastname: lastname, email: email } },new :true }, function (err, saved) {
+    if (err || !saved) {
+            console.log("User not saved");
+            res.end("saved Not successfully");
+        }
+        else {
+            res.end("saved successfully");
+          //  res.json(doc);
+        }
+    });
+    
+
+});
+//================= new recored save Doun--------
+ 
+
+//===========================================
+
+//-------------delete
+app.delete('/del/:id', function (req, res) {
+    var id = req.params.id;
+    // var name= req.body.name;
+    
+    //=====================
+    db.t1.remove({ _id : mongojs.ObjectId(id) }, function (err, saved) {
+        if (err || !saved) {
+            //    console.log("User not saved");
+            res.end("Delete Not successfully");
+        }
+        else {
+            //   // res.json(docs)
+            //    //  res.render('/');
+            res.end("Delete successfully");
+          // res.render('./sp.html');
+        }
+       // res.json(docs);
+    });
+    
+
+});
+
+////////////////
+
+
+app.listen(port, function () {
+    console.log('Listening on ' + port);
+});
+
+//============================================================sp.html======================
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>Login</title>
+    <script src="Script/Angular/a/angular.js"></script>
+    <script src="Script/Angular/a/ui-bootstrap-tpls-0.10.0.js"></script>
+    <link href="Script/Angular/a/bootstrap.min.css" rel="stylesheet" />
+    <script src="Script/Angular/a/jquery.min.js"></script>
+    <script src="Script/Angular/a/bootstrap.min.js"></script>
+    <script src="Script/Angular/Control/curdControl.js"></script>
+</head>
+<body>
+   <div>
+       <div ng-app="myApp" ng-controller="customersCtrl">
+     
+           name  <input type="text" id="nametext" ng-model="name" /><br />
+           lastname <input type="text" id="secondtext" ng-model="lastname" /><br />
+           email <input type="text" id="emailtext" ng-model="email" /><br />
+           <input type="button" ng-click="SaveRecordup()" value="add" />
+           <br />
+           <br />
+           <div class="input-group">
+               <p>
+                   Find Records:    <input class="form-control" ng-model="find" placeholder="Search" type="search" /> <span class="input-group-addon">
+                       <span class="glyphicon glyphicon-search"></span>
+                   </span>
+               </p>
+           </div>
+           <table class="table">
+
+               <thead>
+                   <tr>
+                       <th ng-click="sort('Name')">
+                           Name
+                          
+                           <span class="glyphicon sort-icon" ng-show="sortKey=='id'" ng-class="{'glyphicon-chevron-up':reverse,'glyphicon-chevron-down':!reverse}"></span>
+                       </th>
+                       <th ng-click="sort('Lastname')">
+                           Lastname
+                           <span class="glyphicon sort-icon" ng-show="sortKey=='first_name'" ng-class="{'glyphicon-chevron-up':reverse,'glyphicon-chevron-down':!reverse}"></span>
+                       </th>
+                       <th ng-click="sort('Email')">
+                           Email
+                           <span class="glyphicon sort-icon" ng-show="sortKey=='last_name'" ng-class="{'glyphicon-chevron-up':reverse,'glyphicon-chevron-down':!reverse}"></span>
+                       </th>
+                       <td colspan="2">Acton</td>
+                   </tr>
+                   <tr>
+                      
+                       <td> <input type="text" placeholder="Email search" ng-model="find2.name" /></td>
+                       <td> <input type="text" placeholder="LastName search" ng-model="find2.lastname" /> </td>
+                       <td><input type="text" placeholder="Email search" ng-model="find2.email" /> </td>
+                       <td><<= Filter </td>
+                   </tr>
+                 
+               </thead>
+            
+                   <tr ng-repeat="item in model  | filter:find | filter:paginate | filter:find2 | orderBy:sortKey:reverse">
+
+                   <td>
+                       <p ng-hide="item.editMode">{{item.name}}</p>
+                       <input ng-show="item.editMode" ng-model="item.name" type="text" />
+                   </td>
+                   <td>
+                       <p ng-hide="item.editMode">{{item.lastname }}</p>
+                       <input ng-show="item.editMode" type="text" ng-model="item.lastname" />
+                   </td>
+                   <td>
+                       <p ng-hide="item.editMode">
+                           {{item.email}}
+                       </p>
+                       <input ng-show="item.editMode" type="text" ng-model="item.email" />
+
+
+                   </td>
+
+                   <td>
+                       <input type="button" ng-hide="item.editMode" class="btn btn-danger" value="Delete" ng-click="DeleteRecord(item)" />
+                       <input type="button" ng-click="UpdateRecord(item)" ng-show="item.editMode" class="btn btn-primary" value="Save" />
+                   </td>
+                   <td>
+                       <input type="button" ng-hide="item.editMode" data-ng-click="toggleEdit(item)" class="btn btn-primary" value="Edit" />
+                       <input type="button" ng-show="item.editMode" data-ng-click="toggleEdit(item)" class="btn btn-default" value="Cancel" />
+                   </td>
+               </tr>
+               <tr ng-if="Status.Showform">
+                   <td>
+                       <input placeholder="Enter Name" ng-model="new.Emp.name" />
+                   </td>
+                   <td>
+                       <input placeholder="Enter LastName" ng-model="new.Emp.lastname" />
+                   </td>
+                   <td>
+                       <input placeholder="Enter Email" ng-model="new.Emp.email" />
+                   </td>
+                  
+                   <td><input type="button" class="btn btn-primary" value="Save" ng-click="SaveRecord()" /></td>
+                   <td><input type="button" class="btn btn-default" value="Cancel" ng-click="ShowForm(false)" /></td>
+               </tr>
+               <tr>
+                   <pagination page="currentPage" total-items="totalItems" ng-model="currentPage"
+                               max-size="4" boundary-links="true"
+                               items-per-page="numPerPage" class="pagination-sm">
+                   </pagination>
+               </tr>
+           </table>
+           <p><input type="button" class="btn btn-primary" value="Add New" ng-click="ShowForm(true)" /></p>
+            
+       </div>
+   </div>
+
+</body>
+</html>
+
+
+//===================================================curdControl.js ======
+
+
+var app = angular.module('myApp', ['ui.bootstrap']);
+app.controller('customersCtrl', ["$scope", "$http", function ($scope, $http) {
+        $scope.name = '';
+        $scope.lastname = '';
+        $scope.email = '';
+        
+        $scope.model = [];
+        function sp() {
+        
+            $http.get('/allrecord').success(function (data) {
+                debugger;
+                $scope.model = data;
+                $scope.totalItems = $scope.model.length;
+            });
+       
+        };
+        sp();
+       
+     
+        //============================================ Save UP  ===================
+        
+        $scope.SaveRecordup = function () {
+            var name = $scope.name;
+            var lastname = $scope.lastname;
+            var email = $scope.email;
+           
+            $http.put("/", { name: name, lastname: lastname, email: email }).success(function (data) {
+            
+                alert(data);
+            
+               sp();
+               
+                
+            });
+          
+        };
+        //============================================ Save doun  ===================
+        
+        $scope.new =
+        {
+            Emp: {}
+        };
+        $scope.SaveRecord = function () {
+       
+            var name = $scope.new.Emp.name;
+            var lastname = $scope.new.Emp.lastname;
+            var email = $scope.new.Emp.email
+
+            // $http.post("/Office/Create", $scope.new.Emp).success(function (data) {
+            $http.put("/newSave/" + name, {  lastname: lastname, email: email }).success(function (data) {
+                $scope.model.push(data);
+
+                $scope.ShowForm(false);
+                $scope.new.Emp = {};
+            });
+        };
+        //==================================== Delelt 
+        $scope.DeleteRecord = function (data) {
+          
+            var id = data._id;
+            $http.delete("/del/" + id).success(function (data) {
+            
+                if (data == "Delete successfully") {
+                    sp();
+                }
+            });
+        };
+        
+        
+        //======================================================================= Short
+        
+        
+        $scope.sort = function (keyname) {
+            
+            $scope.sortKey = keyname;   //set the sortKey to the param passed
+            $scope.reverse = !$scope.reverse; //if true make it false and vice versa
+        }
+        ///////////////////
+        
+        //===================================Edit
+        
+        $scope.toggleEdit = function () {
+       
+            this.item.editMode = !this.item.editMode
+
+        }
+        
+        //=============================================================Update
+        $scope.UpdateRecord = function (record) {
+     
+            var id = record._id; 
+            var name = record.name;
+            var lastname = record.lastname;
+            var email = record.email;
+            
+            $http.post("/UpdateRecord", { record : record }).success(function (data) {
+                
+                
+               alert(data);
+                $scope.model = data;
+               sp();
+
+               // $scope.model.push(data);
+                //$scope.ShowForm(false);
+
+
+            });
+        };
+
+        ////======================================================Paging
+        $scope.predicate = 'name';
+        $scope.reverse = true;
+        $scope.currentPage = 1;
+        // pagination controls
+        
+        // debugger;
+        $scope.numPerPage = 4;
+        $scope.paginate = function (value) {
+            var begin, end, index;
+            begin = ($scope.currentPage - 1) * $scope.numPerPage;
+            end = begin + $scope.numPerPage;
+            index = $scope.model.indexOf(value);
+            return (begin <= index && index < end);
+        };
+
+             //====================  SHOW
+        $scope.ShowForm = function (IsTrue) {
+            $scope.Status.Showform = IsTrue;
+        };
+        $scope.Status = {
+            Showform: false
+        };
+             //===========
+
+    }]);
+//============================SERVER.JS==========================
+
+
+
+var express = require("express");
+var http = require('http');
+var path = require('path');
+var favicon = require('serve-favicon');
+var logger = require('morgan');
+var methodOverride = require('method-override');
+var session = require('express-session');
+var bodyParser = require('body-parser');
+var multer = require('multer');
+var errorHandler = require('errorhandler');
+var mongoose = require('mongoose');
+var mongojs = require('mongojs');
+
+//==========================================================
+var app = express();
+var port = process.env.PORT || 3000;
+
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'html');
+app.use(logger('dev'));
+app.use(methodOverride());
+app.use(session({
+    resave: true,
+    saveUninitialized: true,
+    secret: 'uwotm8'
+}));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+//=======================================================================================
+var db = mongojs('mongodb://localhost:27017/database', ['t1'])
+app.get("/", function (req, res) {
+    
+    res.sendfile('./Views/sp.html');
+    
+});
+
+//---------------------------------------------------all recored
+
+app.get('/allrecord', function (req, res) {
+    //console.log(tabl);
+    //res.json(tabl)
+    
+    db.t1.find(function (err, docs) {
+        res.json(docs)
+    })
+
+});
+
+//-----------------------------save UP
+app.put('/', function (req, res, next) {
+    var name = req.body.name;
+    var lastname = req.body.lastname;
+    var email = req.body.email;
+    //=====================
+    db.t1.insert({ 'name': name, 'lastname': lastname, 'email': email }, function (err, saved) {
+        if (err || !saved) {
+            console.log("User not saved");
+            res.end("saved Not successfully");
+        }
+        else {
+            
+            //  res.render('/');
+            res.end("saved successfully");
+            //refresh();
+        }
+    });
+    
+
+});
+///---------------------------Update  
+app.post('/UpdateRecord', function (req, res) {
+    var id = req.body.record._id;
+    var name = req.body.record.name;
+    var lastname = req.body.record.lastname;
+    var email = req.body.record.email;
+    
+    //db.t1.update({ _id : mongojs.ObjectId(id)  }, { $set: { name: name, lastname: lastname, email: email } } , { multi: true }, function (err, saved) {
+    db.t1.findAndModify({ query: { _id : mongojs.ObjectId(id) }, update: { $set : { name: name, lastname: lastname, email: email } },new :true }, function (err, saved) {
+    if (err || !saved) {
+            console.log("User not saved");
+            res.end("saved Not successfully");
+        }
+        else {
+            res.end("saved successfully");
+          //  res.json(doc);
+        }
+    });
+    
+
+});
+//================= new recored save Doun--------
+ 
+
+//===========================================
+
+//-------------delete
+app.delete('/del/:id', function (req, res) {
+    var id = req.params.id;
+    // var name= req.body.name;
+    
+    //=====================
+    db.t1.remove({ _id : mongojs.ObjectId(id) }, function (err, saved) {
+        if (err || !saved) {
+            //    console.log("User not saved");
+            res.end("Delete Not successfully");
+        }
+        else {
+            //   // res.json(docs)
+            //    //  res.render('/');
+            res.end("Delete successfully");
+          // res.render('./sp.html');
+        }
+       // res.json(docs);
+    });
+    
+
+});
+
+////////////////
+
+
+app.listen(port, function () {
+    console.log('Listening on ' + port);
+});
+
+//============================================================sp.html======================
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <title>Login</title>
+    <script src="Script/Angular/a/angular.js"></script>
+    <script src="Script/Angular/a/ui-bootstrap-tpls-0.10.0.js"></script>
+    <link href="Script/Angular/a/bootstrap.min.css" rel="stylesheet" />
+    <script src="Script/Angular/a/jquery.min.js"></script>
+    <script src="Script/Angular/a/bootstrap.min.js"></script>
+    <script src="Script/Angular/Control/curdControl.js"></script>
+</head>
+<body>
+   <div>
+       <div ng-app="myApp" ng-controller="customersCtrl">
+     
+           name  <input type="text" id="nametext" ng-model="name" /><br />
+           lastname <input type="text" id="secondtext" ng-model="lastname" /><br />
+           email <input type="text" id="emailtext" ng-model="email" /><br />
+           <input type="button" ng-click="SaveRecordup()" value="add" />
+           <br />
+           <br />
+           <div class="input-group">
+               <p>
+                   Find Records:    <input class="form-control" ng-model="find" placeholder="Search" type="search" /> <span class="input-group-addon">
+                       <span class="glyphicon glyphicon-search"></span>
+                   </span>
+               </p>
+           </div>
+           <table class="table">
+
+               <thead>
+                   <tr>
+                       <th ng-click="sort('Name')">
+                           Name
+                          
+                           <span class="glyphicon sort-icon" ng-show="sortKey=='id'" ng-class="{'glyphicon-chevron-up':reverse,'glyphicon-chevron-down':!reverse}"></span>
+                       </th>
+                       <th ng-click="sort('Lastname')">
+                           Lastname
+                           <span class="glyphicon sort-icon" ng-show="sortKey=='first_name'" ng-class="{'glyphicon-chevron-up':reverse,'glyphicon-chevron-down':!reverse}"></span>
+                       </th>
+                       <th ng-click="sort('Email')">
+                           Email
+                           <span class="glyphicon sort-icon" ng-show="sortKey=='last_name'" ng-class="{'glyphicon-chevron-up':reverse,'glyphicon-chevron-down':!reverse}"></span>
+                       </th>
+                       <td colspan="2">Acton</td>
+                   </tr>
+                   <tr>
+                      
+                       <td> <input type="text" placeholder="Email search" ng-model="find2.name" /></td>
+                       <td> <input type="text" placeholder="LastName search" ng-model="find2.lastname" /> </td>
+                       <td><input type="text" placeholder="Email search" ng-model="find2.email" /> </td>
+                       <td><<= Filter </td>
+                   </tr>
+                 
+               </thead>
+            
+                   <tr ng-repeat="item in model  | filter:find | filter:paginate | filter:find2 | orderBy:sortKey:reverse">
+
+                   <td>
+                       <p ng-hide="item.editMode">{{item.name}}</p>
+                       <input ng-show="item.editMode" ng-model="item.name" type="text" />
+                   </td>
+                   <td>
+                       <p ng-hide="item.editMode">{{item.lastname }}</p>
+                       <input ng-show="item.editMode" type="text" ng-model="item.lastname" />
+                   </td>
+                   <td>
+                       <p ng-hide="item.editMode">
+                           {{item.email}}
+                       </p>
+                       <input ng-show="item.editMode" type="text" ng-model="item.email" />
+
+
+                   </td>
+
+                   <td>
+                       <input type="button" ng-hide="item.editMode" class="btn btn-danger" value="Delete" ng-click="DeleteRecord(item)" />
+                       <input type="button" ng-click="UpdateRecord(item)" ng-show="item.editMode" class="btn btn-primary" value="Save" />
+                   </td>
+                   <td>
+                       <input type="button" ng-hide="item.editMode" data-ng-click="toggleEdit(item)" class="btn btn-primary" value="Edit" />
+                       <input type="button" ng-show="item.editMode" data-ng-click="toggleEdit(item)" class="btn btn-default" value="Cancel" />
+                   </td>
+               </tr>
+               <tr ng-if="Status.Showform">
+                   <td>
+                       <input placeholder="Enter Name" ng-model="new.Emp.name" />
+                   </td>
+                   <td>
+                       <input placeholder="Enter LastName" ng-model="new.Emp.lastname" />
+                   </td>
+                   <td>
+                       <input placeholder="Enter Email" ng-model="new.Emp.email" />
+                   </td>
+                  
+                   <td><input type="button" class="btn btn-primary" value="Save" ng-click="SaveRecord()" /></td>
+                   <td><input type="button" class="btn btn-default" value="Cancel" ng-click="ShowForm(false)" /></td>
+               </tr>
+               <tr>
+                   <pagination page="currentPage" total-items="totalItems" ng-model="currentPage"
+                               max-size="4" boundary-links="true"
+                               items-per-page="numPerPage" class="pagination-sm">
+                   </pagination>
+               </tr>
+           </table>
+           <p><input type="button" class="btn btn-primary" value="Add New" ng-click="ShowForm(true)" /></p>
+            
+       </div>
+   </div>
+
+</body>
+</html>
+
+
+//===================================================curdControl.js ======
+
+
+var app = angular.module('myApp', ['ui.bootstrap']);
+app.controller('customersCtrl', ["$scope", "$http", function ($scope, $http) {
+        $scope.name = '';
+        $scope.lastname = '';
+        $scope.email = '';
+        
+        $scope.model = [];
+        function sp() {
+        
+            $http.get('/allrecord').success(function (data) {
+                debugger;
+                $scope.model = data;
+                $scope.totalItems = $scope.model.length;
+            });
+       
+        };
+        sp();
+       
+     
+        //============================================ Save UP  ===================
+        
+        $scope.SaveRecordup = function () {
+            var name = $scope.name;
+            var lastname = $scope.lastname;
+            var email = $scope.email;
+           
+            $http.put("/", { name: name, lastname: lastname, email: email }).success(function (data) {
+            
+                alert(data);
+            
+               sp();
+               
+                
+            });
+          
+        };
+        //============================================ Save doun  ===================
+        
+        $scope.new =
+        {
+            Emp: {}
+        };
+        $scope.SaveRecord = function () {
+       
+            var name = $scope.new.Emp.name;
+            var lastname = $scope.new.Emp.lastname;
+            var email = $scope.new.Emp.email
+
+            // $http.post("/Office/Create", $scope.new.Emp).success(function (data) {
+            $http.put("/newSave/" + name, {  lastname: lastname, email: email }).success(function (data) {
+                $scope.model.push(data);
+
+                $scope.ShowForm(false);
+                $scope.new.Emp = {};
+            });
+        };
+        //==================================== Delelt 
+        $scope.DeleteRecord = function (data) {
+          
+            var id = data._id;
+            $http.delete("/del/" + id).success(function (data) {
+            
+                if (data == "Delete successfully") {
+                    sp();
+                }
+            });
+        };
+        
+        
+        //======================================================================= Short
+        
+        
+        $scope.sort = function (keyname) {
+            
+            $scope.sortKey = keyname;   //set the sortKey to the param passed
+            $scope.reverse = !$scope.reverse; //if true make it false and vice versa
+        }
+        ///////////////////
+        
+        //===================================Edit
+        
+        $scope.toggleEdit = function () {
+       
+            this.item.editMode = !this.item.editMode
+
+        }
+        
+        //=============================================================Update
+        $scope.UpdateRecord = function (record) {
+     
+            var id = record._id; 
+            var name = record.name;
+            var lastname = record.lastname;
+            var email = record.email;
+            
+            $http.post("/UpdateRecord", { record : record }).success(function (data) {
+                
+                
+               alert(data);
+                $scope.model = data;
+               sp();
+
+               // $scope.model.push(data);
+                //$scope.ShowForm(false);
+
+
+            });
+        };
+
+        ////======================================================Paging
+        $scope.predicate = 'name';
+        $scope.reverse = true;
+        $scope.currentPage = 1;
+        // pagination controls
+        
+        // debugger;
+        $scope.numPerPage = 4;
+        $scope.paginate = function (value) {
+            var begin, end, index;
+            begin = ($scope.currentPage - 1) * $scope.numPerPage;
+            end = begin + $scope.numPerPage;
+            index = $scope.model.indexOf(value);
+            return (begin <= index && index < end);
+        };
+
+             //====================  SHOW
+        $scope.ShowForm = function (IsTrue) {
+            $scope.Status.Showform = IsTrue;
+        };
+        $scope.Status = {
+            Showform: false
+        };
+             //===========
+
+    }]);
